@@ -5,7 +5,7 @@ import explode from '../explode';
 import { collectionOf } from '../invariant';
 import { polygon, multiPolygon, featureCollection, isObject } from '../helpers';
 import gridToMatrix from './lib/grid-to-matrix';
-import isoBands from './lib/marchingsquares-isobands';
+import {isoBands} from 'marchingsquares';
 
 /**
  * Takes a grid {@link FeatureCollection} of {@link Point} features with z-values and an array of
@@ -119,20 +119,15 @@ function rescaleContours(contours, matrix, points) {
     var scaleX = originalWidth / matrixWidth;
     var scaleY = originalHeigth / matrixHeight;
 
-    var resize = function (point) {
-        point[0] = point[0] * scaleX + x0;
-        point[1] = point[1] * scaleY + y0;
-    };
-
     // resize and shift each point/line of the isobands
-    contours.forEach(function (contour) {
-        contour.groupedRings.forEach(function (lineRingSet) {
-            lineRingSet.forEach(function (lineRing) {
-                lineRing.forEach(resize);
+    return contours.map(function (contour) {
+        contour.groupedRings = contour.groupedRings.map(function (lineRingSet) {
+            return lineRingSet.map(function (lineRing) {
+                return lineRing.map(point => [point[0] * scaleX + x0, point[1] * scaleY + y0]);
             });
         });
+        return contour;
     });
-    return contours;
 }
 
 
@@ -147,31 +142,17 @@ function rescaleContours(contours, matrix, points) {
  * @returns {Array} array of the input LineString ordered by area
  */
 function orderByArea(ringsCoords) {
-    var ringsWithArea = [];
-    var areas = [];
-    ringsCoords.forEach(function (coords) {
-        // var poly = polygon([points]);
-        var ringArea = area(polygon([coords]));
-        // create an array of areas value
-        areas.push(ringArea);
+    const ringsWithArea = ringsCoords.map(function (coords) {
         // associate each lineRing with its area
-        ringsWithArea.push({ring: coords, area: ringArea});
+        return {ring: coords, area: area(polygon([coords]))};
     });
-    areas.sort(function (a, b) { // bigger --> smaller
-        return b - a;
+    ringsWithArea.sort(function (a, b) { // bigger --> smaller
+        return b.area - a.area;
     });
     // create a new array of linearRings coordinates ordered by their area
-    var orderedByArea = [];
-    areas.forEach(function (area) {
-        for (var lr = 0; lr < ringsWithArea.length; lr++) {
-            if (ringsWithArea[lr].area === area) {
-                orderedByArea.push(ringsWithArea[lr].ring);
-                ringsWithArea.splice(lr, 1);
-                break;
-            }
-        }
+    return ringsWithArea.map(function (x) {
+        return x.ring;
     });
-    return orderedByArea;
 }
 
 /**
