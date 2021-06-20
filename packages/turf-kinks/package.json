@@ -55,6 +55,7 @@
     "write-json-file": "*"
   },
   "dependencies": {
-    "@turf/helpers": "^6.4.0"
+    "@turf/helpers": "^6.4.0",
+    "sweepline-intersections": "^1.1.1"
   }
 }
